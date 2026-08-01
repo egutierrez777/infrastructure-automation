@@ -1,0 +1,20 @@
+---
+- name: NGINX install
+  apt:
+    name: nginx
+    state: present
+
+- name: Init NGINX service
+  service:
+    name: nginx
+    state: started
+    enabled: true
+
+- name: Put first content as default page
+  template:
+    src: index.html.j2
+    dest: /var/www/html/index.html
+    owner: root
+    group: root
+    mode: 0644
+  notify: NGINX restart
