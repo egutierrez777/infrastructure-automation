@@ -1,0 +1,7 @@
+---
+- name: Configure web werver
+  hosts: webservers
+  become: true
+
+  roles:
+    - webserver

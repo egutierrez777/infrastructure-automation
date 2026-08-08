@@ -1,0 +1,4 @@
+---
+title: "Web server deployed with Ansible"
+message: "This is a web page in NGINX deployed by Ansible"
+work_env: "DEVELOPMENT"

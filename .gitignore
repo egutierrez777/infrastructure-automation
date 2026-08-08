@@ -7,5 +7,24 @@
 **/*.tfvars
 !**/*.tfvars.example
 
+crash.log
+crash.*.log
+
 # Ansible
+**/inventories/**/hosts.ini
 **/inventory/hosts.ini
+**/*.retry
+
+*.pem
+*.key
+*.crt
+
+.env
+.env.*
+
+*.swp
+*.swo
+*~
+
+.DS_Store
+Thumbs.db

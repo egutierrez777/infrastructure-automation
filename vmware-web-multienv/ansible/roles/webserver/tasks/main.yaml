@@ -1,0 +1,39 @@
+---
+- name: NGINX install
+  apt:
+    name: nginx
+    state: present
+
+- name: Init NGINX service
+  service:
+    name: nginx
+    state: started
+    enabled: true
+
+- name: Upload the web server main page
+  template:
+    src: index.html.j2
+    dest: /var/www/html/index.html
+    owner: root
+    group: root
+    mode: 0644
+  notify: NGINX restart
+
+- name: Apply pending handlers
+  meta: flush_handlers
+
+- name: Check website availability
+  uri:
+    url: http://localhost
+    method: GET
+    status_code: 200
+    return_content: true
+  register: website_check
+
+- name: Verify website content
+  assert:
+    that:
+      - website_check.status == 200
+      - website_check.content | length > 0
+    fail_msg: "Website health check failed"
+    success_msg: "Website is working correctly"
