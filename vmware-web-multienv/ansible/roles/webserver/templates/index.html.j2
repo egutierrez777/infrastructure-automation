@@ -8,13 +8,15 @@
 
 <h1>{{ message }}</h1>
 
+<p>Environment: {{ work_env }}</p>
+
 <p>Server: {{ inventory_hostname }}</p>
+
+<p>Hostname: {{ ansible_facts["hostname"] }}</p>
 
 <p>IP Adress: {{ ansible_facts['default_ipv4']['address'] }}</p>
 
 <p>Operating System: {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}</p>
-
-<p>Environment: {{ work_env }}</p>
 
 <p>THIS WEB PAGE WAS GENERATED AUTOMATICALLY BY ANSIBLE</p>
 <p>Author: Ever Gutierrez - amatus.gutierrez777@gmail.com</p>

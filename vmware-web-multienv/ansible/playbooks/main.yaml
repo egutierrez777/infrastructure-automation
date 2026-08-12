@@ -5,3 +5,10 @@
 
   roles:
     - webserver
+
+- name: Configure load balancer
+  hosts: loadbalancers
+  become: true
+
+  roles:
+    - loadbalancer

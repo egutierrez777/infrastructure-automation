@@ -1,4 +1,11 @@
 ---
+- name: Configure server hostname
+  hostname:
+    name: "{{ inventory_hostname }}"
+
+- name: Update facts
+  setup:
+
 - name: NGINX install
   apt:
     name: nginx
