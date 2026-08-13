@@ -30,7 +30,7 @@ variable "memory" {
   type        = number
 }
 
-###
+#############################################
 variable "datacenter" {
   description = "vSphere datacenter"
   type        = string
@@ -53,5 +53,11 @@ variable "network" {
 
 variable "template" {
   description = "Virtual machine template"
+  type        = string
+}
+
+#############################################
+variable "work_env" {
+  description = "Environment name used by Ansible"
   type        = string
 }

@@ -4,8 +4,9 @@ resource "local_file" "ansible_inventory" {
   content = templatefile(
     "${path.module}/inventory.tpl",
     {
-      vm_name = module.web01.vm_name
-      vm_ip   = module.web01.vm_ip
+      vm_name   = module.web01.vm_name
+      vm_ip     = module.web01.vm_ip
+      work_env  = var.work_env
     }
   )
 }

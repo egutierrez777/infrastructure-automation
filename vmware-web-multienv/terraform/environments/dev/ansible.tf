@@ -4,14 +4,14 @@ resource "terraform_data" "ansible" {
   ]
 
   triggers_replace = [
-    module.web01.vm_ip
+    local_file.ansible_inventory.content
   ]
 
   provisioner "local-exec" {
     working_dir = "${path.module}/../../../ansible"
 
     command = <<-EOT
-      ansible-playbook playbooks/main.yaml
+      ansible-playbook -i inventories/dev/hosts.ini playbooks/main.yaml
     EOT
   }
 }
