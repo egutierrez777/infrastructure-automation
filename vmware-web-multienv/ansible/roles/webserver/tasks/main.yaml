@@ -11,6 +11,14 @@
     name: nginx
     state: present
 
+- name: Configure NGINX no-cache headers
+  copy:
+    src: no-cache.conf
+    dest: /etc/nginx/conf.d/no-cache.conf
+    owner: root
+    group: root
+    mode: 0644
+
 - name: Init NGINX service
   service:
     name: nginx
