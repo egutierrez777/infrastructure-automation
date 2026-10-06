@@ -8,7 +8,7 @@ data "vsphere_host" "host" {
 }
 
 data "vsphere_datastore" "datastore" {
-  name          = "DS3PAR-LAB"
+  name          = "DSTRUENAS-LAB"
   datacenter_id = data.vsphere_datacenter.dc.id
 }
 
