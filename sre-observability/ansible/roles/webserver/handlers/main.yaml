@@ -1,0 +1,14 @@
+---
+- name: Reload systemd
+  systemd:
+    daemon_reload: true
+
+- name: Restart sre-web service
+  systemd:
+    name: sre-web
+    state: restarted
+
+- name: NGINX restart
+  service:
+    name: nginx
+    state: restarted

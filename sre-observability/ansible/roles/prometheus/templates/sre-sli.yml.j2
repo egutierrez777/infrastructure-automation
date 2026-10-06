@@ -1,0 +1,59 @@
+groups:
+  - name: sre-sli
+    interval: 30s
+
+    rules:
+
+      - record: sli:http_availability:ratio5m
+        expr: |
+          (
+            (
+              sum(rate(http_requests_total{status=~"2.."}[5m]))
+              /
+              sum(rate(http_requests_total[5m]))
+            )
+            and
+            (
+              sum(rate(http_requests_total[5m])) > 0
+            )
+          )
+          or vector(1)
+
+      - record: sli:http_latency_under_500ms:ratio5m
+        expr: |
+          (
+            (
+              sum(rate(http_request_duration_seconds_bucket{le="0.5"}[5m]))
+              /
+              sum(rate(http_request_duration_seconds_count[5m]))
+            )
+            and
+            (
+              sum(rate(http_request_duration_seconds_count[5m])) > 0
+            )
+          )
+          or vector(1)
+
+      - record: slo:http_availability:burn_rate5m
+        expr: |
+          (1 - sli:http_availability:ratio5m) / 0.01
+
+      - record: slo:http_availability:burn_rate1h
+        expr: |
+          (
+            1 -
+            (
+              (
+                (
+                  sum(rate(http_requests_total{status=~"2.."}[1h]))
+                  /
+                  sum(rate(http_requests_total[1h]))
+                )
+                and
+                (
+                  sum(rate(http_requests_total[1h])) > 0
+                )
+              )
+              or vector(1)
+            )
+          ) / 0.01

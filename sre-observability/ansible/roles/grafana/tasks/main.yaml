@@ -1,0 +1,94 @@
+---
+- name: Install prerequisites for Grafana repository
+  apt:
+    name:
+      - apt-transport-https
+      - wget
+      - gpg
+    state: present
+    update_cache: true
+
+- name: Create Grafana keyring directory
+  file:
+    path: /etc/apt/keyrings
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Download Grafana repository signing key
+  get_url:
+    url: https://apt.grafana.com/gpg.key
+    dest: /etc/apt/keyrings/grafana.asc
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Configure Grafana APT repository
+  apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/grafana.asc] https://apt.grafana.com stable main"
+    filename: grafana
+    state: present
+    update_cache: true
+
+- name: Install Grafana
+  apt:
+    name: grafana
+    state: present
+  notify: Restart Grafana
+
+- name: Configure Prometheus datasource
+  template:
+    src: datasource.yml.j2
+    dest: /etc/grafana/provisioning/datasources/prometheus.yml
+    owner: root
+    group: grafana
+    mode: "0644"
+  notify: Restart Grafana
+
+- name: Create Grafana dashboards directory
+  file:
+    path: /var/lib/grafana/dashboards
+    state: directory
+    owner: root
+    group: grafana
+    mode: '0755'
+
+- name: Provision Application Overview dashboard
+  template:
+    src: application-overview.json.j2
+    dest: /var/lib/grafana/dashboards/application-overview.json
+    owner: root
+    group: grafana
+    mode: '0644'
+
+- name: Provision Infrastructure Overview dashboard
+  template:
+    src: infrastructure-overview.json.j2
+    dest: /var/lib/grafana/dashboards/infrastructure-overview.json
+    owner: root
+    group: grafana
+    mode: '0644'
+
+- name: Provision SRE SLO dashboard
+  template:
+    src: sre-slo.json.j2
+    dest: /var/lib/grafana/dashboards/sre-slo.json
+    owner: root
+    group: grafana
+    mode: '0644'
+
+- name: Configure Grafana dashboard provisioning
+  template:
+    src: dashboards.yml.j2
+    dest: /etc/grafana/provisioning/dashboards/sre-observability.yml
+    owner: root
+    group: grafana
+    mode: '0640'
+  notify: Restart Grafana
+
+- name: Enable and start Grafana service
+  systemd:
+    name: grafana-server
+    enabled: true
+    state: started

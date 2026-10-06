@@ -1,0 +1,24 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: true
+
+- name: Install Alertmanager
+  apt:
+    name: prometheus-alertmanager
+    state: present
+
+- name: Deploy Alertmanager configuration
+  template:
+    src: alertmanager.yml.j2
+    dest: /etc/prometheus/alertmanager.yml
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart Alertmanager
+
+- name: Enable and start Alertmanager service
+  systemd:
+    name: prometheus-alertmanager
+    enabled: true
+    state: started

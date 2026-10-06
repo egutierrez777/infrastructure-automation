@@ -1,0 +1,299 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": false,
+  "graphTooltip": 0,
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "100 * (1 - avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])))",
+          "legendFormat": "{{ '{{instance}}' }}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "CPU Usage",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+	"type": "prometheus",
+	"uid": "prometheus"
+      },
+      "fieldConfig": {
+	"defaults": {
+	  "color": {
+	    "mode": "palette-classic"
+	  },
+	  "unit": "percent"
+	},
+	"overrides": []
+      },
+      "gridPos": {
+	"h": 8,
+	"w": 12,
+	"x": 12,
+	"y": 0
+      },
+      "id": 2,
+      "options": {
+	"legend": {
+	  "displayMode": "list",
+	  "placement": "bottom"
+	},
+	"tooltip": {
+	  "mode": "single"
+	}
+      },
+      "targets": [
+	{
+	  "datasource": {
+	    "type": "prometheus",
+	    "uid": "prometheus"
+	  },
+	  "editorMode": "code",
+	  "expr": "100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)",
+	  "legendFormat": "{{ '{{instance}}' }}",
+	  "range": true,
+	  "refId": "A"
+	}
+      ],
+      "title": "Memory Usage",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+	"type": "prometheus",
+	"uid": "prometheus"
+      },
+      "fieldConfig": {
+	"defaults": {
+	  "color": {
+	    "mode": "palette-classic"
+	  },
+	  "unit": "bytes"
+	},
+	"overrides": []
+      },
+      "gridPos": {
+	"h": 8,
+	"w": 12,
+	"x": 0,
+	"y": 8
+      },
+      "id": 3,
+      "options": {
+	"legend": {
+	  "displayMode": "list",
+	  "placement": "bottom"
+	},
+	"tooltip": {
+	  "mode": "multi"
+	}
+      },
+      "targets": [
+	{
+	  "datasource": {
+	    "type": "prometheus",
+	    "uid": "prometheus"
+	  },
+	  "editorMode": "code",
+	  "expr": "node_memory_MemAvailable_bytes",
+	  "legendFormat": "Available - {{ '{{instance}}' }}",
+	  "range": true,
+	  "refId": "A"
+	},
+	{
+	  "datasource": {
+	    "type": "prometheus",
+	    "uid": "prometheus"
+	  },
+	  "editorMode": "code",
+	  "expr": "node_memory_MemTotal_bytes",
+	  "legendFormat": "Total - {{ '{{instance}}' }}",
+	  "range": true,
+	  "refId": "B"
+	}
+      ],
+      "title": "Available Memory",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+	"type": "prometheus",
+	"uid": "prometheus"
+      },
+      "fieldConfig": {
+	"defaults": {
+	  "color": {
+	    "mode": "thresholds"
+	  },
+          "custom": {
+            "fillOpacity": 50,
+            "gradientMode": "opacity",
+            "lineWidth": 2,
+            "spanNulls": false
+	  },
+	  "min": 0,
+	  "max": 100,
+	  "unit": "percent",
+	  "thresholds": {
+	    "mode": "absolute",
+	    "steps": [
+	      {
+		"color": "green",
+		"value": null
+	      },
+	      {
+		"color": "orange",
+		"value": 80
+	      },
+	      {
+		"color": "red",
+		"value": 90
+	      }
+	    ]
+	  }
+	},
+	"overrides": []
+      },
+      "gridPos": {
+	"h": 8,
+	"w": 12,
+	"x": 12,
+	"y": 8
+      },
+      "id": 4,
+      "options": {
+	"legend": {
+	  "displayMode": "list",
+	  "placement": "bottom"
+	},
+	"tooltip": {
+	  "mode": "single"
+	}
+      },
+      "targets": [
+	{
+	  "datasource": {
+	    "type": "prometheus",
+	    "uid": "prometheus"
+	  },
+	  "editorMode": "code",
+	  "expr": "100 * (1 - node_filesystem_avail_bytes{mountpoint=\"/\", fstype=\"ext4\"} / node_filesystem_size_bytes{mountpoint=\"/\", fstype=\"ext4\"})",
+	  "legendFormat": "{{ '{{instance}}' }}",
+	  "range": true,
+	  "refId": "A"
+	}
+      ],
+      "title": "Filesystem /",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+	"type": "prometheus",
+	"uid": "prometheus"
+      },
+      "fieldConfig": {
+	"defaults": {
+	  "color": {
+	    "mode": "palette-classic"
+	  },
+          "custom": {
+            "fillOpacity": 50,
+            "gradientMode": "opacity",
+            "lineWidth": 2,
+            "spanNulls": false
+	  },
+	  "unit": "short",
+	  "decimals": 2
+	},
+	"overrides": []
+      },
+      "gridPos": {
+	"h": 8,
+	"w": 12,
+	"x": 0,
+	"y": 16
+      },
+      "id": 5,
+      "options": {
+	"legend": {
+	  "displayMode": "list",
+	  "placement": "bottom"
+	},
+	"tooltip": {
+	  "mode": "single"
+	}
+      },
+      "targets": [
+	{
+	  "datasource": {
+	    "type": "prometheus",
+	    "uid": "prometheus"
+	  },
+	  "editorMode": "code",
+	  "expr": "node_load1",
+	  "legendFormat": "{{ '{{instance}}' }}",
+	  "range": true,
+	  "refId": "A"
+	}
+      ],
+      "title": "Load 1m",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": [
+    "sre",
+    "observability",
+    "infrastructure"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "title": "Infrastructure Overview",
+  "uid": "sre-infrastructure",
+  "version": 1
+}

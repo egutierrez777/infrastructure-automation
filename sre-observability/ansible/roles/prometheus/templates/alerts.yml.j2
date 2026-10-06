@@ -1,0 +1,18 @@
+groups:
+  - name: sre-alerts
+
+    rules:
+
+      - alert: HighErrorBudgetBurnRate
+        expr: |
+          slo:http_availability:burn_rate5m > 5
+          and
+          slo:http_availability:burn_rate1h > 5
+        for: 5m
+
+        labels:
+          severity: critical
+
+        annotations:
+          summary: "HTTP availability SLO is burning error budget too quickly"
+          description: "The HTTP service is consuming its availability error budget at more than 5x the allowed rate."

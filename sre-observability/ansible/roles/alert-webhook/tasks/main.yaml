@@ -1,0 +1,47 @@
+---
+- name: Create webhook group
+  group:
+    name: "{{ alert_webhook_group }}"
+    system: true
+
+- name: Create webhook user
+  user:
+    name: "{{ alert_webhook_user }}"
+    group: "{{ alert_webhook_group }}"
+    system: true
+    shell: /usr/sbin/nologin
+    create_home: false
+
+- name: Create webhook directory
+  file:
+    path: "{{ alert_webhook_install_dir }}"
+    state: directory
+    owner: "{{ alert_webhook_user }}"
+    group: "{{ alert_webhook_group }}"
+    mode: "0755"
+
+- name: Deploy webhook application
+  template:
+    src: webhook.py.j2
+    dest: "{{ alert_webhook_install_dir }}/webhook.py"
+    owner: "{{ alert_webhook_user }}"
+    group: "{{ alert_webhook_group }}"
+    mode: "0755"
+  notify: Restart alert webhook
+
+- name: Deploy webhook systemd service
+  template:
+    src: alert-webhook.service.j2
+    dest: /etc/systemd/system/alert-webhook.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart alert webhook
+
+- name: Enable and start alert webhook
+  systemd:
+    name: alert-webhook
+    enabled: true
+    state: started

@@ -1,0 +1,58 @@
+---
+- name: Configure server hostname
+  hostname:
+    name: "{{ inventory_hostname }}"
+
+- name: Update facts
+  setup:
+
+- name: Update apt cache
+  apt:
+    update_cache: true
+
+- name: Install Prometheus
+  apt:
+    name: prometheus
+    state: present
+    update_cache: true
+
+- name: Create Prometheus rules directory
+  file:
+    path: /etc/prometheus/rules
+    state: directory
+    owner: root
+    group: prometheus
+    mode: "0755"
+
+- name: Deploy Prometheus configuration
+  template:
+    src: prometheus.yml.j2
+    dest: /etc/prometheus/prometheus.yml
+    owner: root
+    group: prometheus
+    mode: "0644"
+  notify: Restart Prometheus
+
+- name: Deploy SRE recording rules
+  template:
+    src: sre-sli.yml.j2
+    dest: /etc/prometheus/rules/sre-sli.yml
+    owner: root
+    group: prometheus
+    mode: "0644"
+  notify: Restart Prometheus
+
+- name: Deploy SRE alert rules
+  template:
+    src: alerts.yml.j2
+    dest: /etc/prometheus/rules/alerts.yml
+    owner: root
+    group: prometheus
+    mode: "0644"
+  notify: Restart Prometheus
+
+- name: Enable and start Prometheus service
+  systemd:
+    name: prometheus
+    enabled: true
+    state: started

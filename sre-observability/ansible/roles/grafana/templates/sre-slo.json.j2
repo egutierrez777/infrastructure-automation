@@ -1,0 +1,459 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": false,
+  "graphTooltip": 0,
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 0.99
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sli:http_availability:ratio5m",
+          "legendFormat": "Availability",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Current Availability",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+	"type": "prometheus",
+	"uid": "prometheus"
+      },
+      "fieldConfig": {
+	"defaults": {
+	  "color": {
+	    "mode": "fixed"
+	  },
+	  "decimals": 0,
+	  "unit": "percentunit"
+	},
+	"overrides": []
+      },
+      "gridPos": {
+	"h": 8,
+	"w": 12,
+	"x": 12,
+	"y": 0
+      },
+      "id": 2,
+      "options": {
+	"colorMode": "value",
+	"graphMode": "none",
+	"justifyMode": "auto",
+	"orientation": "auto",
+	"reduceOptions": {
+	  "calcs": [
+	    "lastNotNull"
+	  ],
+	  "fields": "",
+	  "values": false
+	},
+	"textMode": "auto"
+      },
+      "targets": [
+	{
+	  "datasource": {
+	    "type": "prometheus",
+	    "uid": "prometheus"
+	  },
+	  "editorMode": "code",
+	  "expr": "vector(0.99)",
+	  "legendFormat": "SLO Target",
+	  "range": true,
+	  "refId": "A"
+	}
+      ],
+      "title": "SLO Target",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+	"type": "prometheus",
+	"uid": "prometheus"
+      },
+      "fieldConfig": {
+	"defaults": {
+	  "color": {
+	    "mode": "thresholds"
+	  },
+	  "min": 0,
+	  "max": 100,
+	  "thresholds": {
+	    "mode": "absolute",
+	    "steps": [
+	      {
+		"color": "red",
+		"value": null
+	      },
+	      {
+		"color": "orange",
+		"value": 25
+	      },
+	      {
+		"color": "green",
+		"value": 50
+	      }
+	    ]
+	  },
+	  "unit": "percent"
+	},
+	"overrides": []
+      },
+      "gridPos": {
+	"h": 8,
+	"w": 12,
+	"x": 0,
+	"y": 8
+      },
+      "id": 3,
+      "options": {
+	"colorMode": "value",
+	"graphMode": "none",
+	"justifyMode": "auto",
+	"orientation": "auto",
+	"reduceOptions": {
+	  "calcs": [
+	    "lastNotNull"
+	  ],
+	  "fields": "",
+	  "values": false
+	},
+	"textMode": "auto"
+      },
+      "targets": [
+	{
+	  "datasource": {
+	    "type": "prometheus",
+	    "uid": "prometheus"
+	  },
+	  "editorMode": "code",
+	  "expr": "100 * (1 - ((1 - sli:http_availability:ratio5m) / 0.01))",
+	  "legendFormat": "Error Budget Remaining",
+	  "range": true,
+	  "refId": "A"
+	}
+      ],
+      "title": "Error Budget Remaining",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+	"type": "prometheus",
+	"uid": "prometheus"
+      },
+      "fieldConfig": {
+	"defaults": {
+	  "color": {
+	    "mode": "thresholds"
+	  },
+	  "min": 0,
+	  "thresholds": {
+	    "mode": "absolute",
+	    "steps": [
+	      {
+		"color": "green",
+		"value": null
+	      },
+	      {
+		"color": "orange",
+		"value": 1
+	      },
+	      {
+		"color": "red",
+		"value": 5
+	      }
+	    ]
+	  },
+	  "unit": "short",
+	  "decimals": 2
+	},
+	"overrides": []
+      },
+      "gridPos": {
+	"h": 8,
+	"w": 12,
+	"x": 12,
+	"y": 8
+      },
+      "id": 4,
+      "options": {
+	"colorMode": "value",
+	"graphMode": "none",
+	"justifyMode": "auto",
+	"orientation": "auto",
+	"reduceOptions": {
+	  "calcs": [
+	    "lastNotNull"
+	  ],
+	  "fields": "",
+	  "values": false
+	},
+	"textMode": "auto"
+      },
+      "targets": [
+	{
+	  "datasource": {
+	    "type": "prometheus",
+	    "uid": "prometheus"
+	  },
+	  "editorMode": "code",
+	  "expr": "slo:http_availability:burn_rate5m",
+	  "legendFormat": "Burn Rate 5m",
+	  "range": true,
+	  "refId": "A"
+	}
+      ],
+      "title": "Burn Rate 5m",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+	"type": "prometheus",
+	"uid": "prometheus"
+      },
+      "fieldConfig": {
+	"defaults": {
+	  "color": {
+	    "mode": "thresholds"
+	  },
+	  "min": 0,
+	  "thresholds": {
+	    "mode": "absolute",
+	    "steps": [
+	      {
+		"color": "green",
+		"value": null
+	      },
+	      {
+		"color": "orange",
+		"value": 1
+	      },
+	      {
+		"color": "red",
+		"value": 5
+	      }
+	    ]
+	  },
+	  "unit": "short",
+	  "decimals": 2
+	},
+	"overrides": []
+      },
+      "gridPos": {
+	"h": 8,
+	"w": 12,
+	"x": 0,
+	"y": 16
+      },
+      "id": 5,
+      "options": {
+	"colorMode": "value",
+	"graphMode": "none",
+	"justifyMode": "auto",
+	"orientation": "auto",
+	"reduceOptions": {
+	  "calcs": [
+	    "lastNotNull"
+	  ],
+	  "fields": "",
+	  "values": false
+	},
+	"textMode": "auto"
+      },
+      "targets": [
+	{
+	  "datasource": {
+	    "type": "prometheus",
+	    "uid": "prometheus"
+	  },
+	  "editorMode": "code",
+	  "expr": "slo:http_availability:burn_rate1h",
+	  "legendFormat": "Burn Rate 1h",
+	  "range": true,
+	  "refId": "A"
+	}
+      ],
+      "title": "Burn Rate 1h",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+	"type": "prometheus",
+	"uid": "prometheus"
+      },
+      "fieldConfig": {
+	"defaults": {
+	  "color": {
+	    "mode": "palette-classic"
+	  },
+	  "custom": {
+	    "fillOpacity": 20,
+	    "gradientMode": "opacity",
+	    "lineWidth": 2,
+	    "spanNulls": false
+	  },
+	  "min": 0,
+	  "max": 1,
+	  "thresholds": {
+	    "mode": "absolute",
+	    "steps": [
+	      {
+		"color": "red",
+		"value": null
+	      },
+	      {
+		"color": "green",
+		"value": 0.99
+	      }
+	    ]
+	  },
+	  "unit": "percentunit"
+	},
+	"overrides": []
+      },
+      "gridPos": {
+	"h": 8,
+	"w": 24,
+	"x": 0,
+	"y": 24
+      },
+      "id": 6,
+      "options": {
+	"legend": {
+	  "displayMode": "list",
+	  "placement": "bottom"
+	},
+	"tooltip": {
+	  "mode": "single"
+	}
+      },
+      "targets": [
+	{
+	  "datasource": {
+	    "type": "prometheus",
+	    "uid": "prometheus"
+	  },
+	  "editorMode": "code",
+	  "expr": "sli:http_availability:ratio5m",
+	  "legendFormat": "Availability",
+	  "range": true,
+	  "refId": "A"
+	}
+      ],
+      "title": "Availability History",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+	"type": "datasource",
+	"uid": "-- Grafana --"
+      },
+      "fieldConfig": {
+	"defaults": {},
+	"overrides": []
+      },
+      "gridPos": {
+	"h": 8,
+	"w": 24,
+	"x": 0,
+	"y": 32
+      },
+      "id": 7,
+      "options": {
+	"alertInstanceLabelFilter": "",
+	"alertName": "HighErrorBudgetBurnRate",
+	"dashboardAlerts": true,
+	"groupBy": [
+	  "alertname"
+	],
+	"groupMode": "default",
+	"maxItems": 20,
+	"showInactive": true,
+	"sortOrder": 1,
+	"stateFilter": {
+	  "alerting": true,
+	  "noData": true,
+	  "normal": true,
+	  "pending": true
+	},
+	"viewMode": "list"
+      },
+      "title": "Alert Status",
+      "type": "alertlist"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": [
+    "sre",
+    "observability",
+    "slo"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "title": "SRE / SLO",
+  "uid": "sre-slo",
+  "version": 1
+}

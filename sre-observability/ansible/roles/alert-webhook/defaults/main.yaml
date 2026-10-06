@@ -1,0 +1,6 @@
+---
+alert_webhook_user: alertwebhook
+alert_webhook_group: alertwebhook
+alert_webhook_port: 8080
+alert_webhook_bind: 127.0.0.1
+alert_webhook_install_dir: /opt/alert-webhook

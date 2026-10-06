@@ -1,0 +1,99 @@
+---
+- name: Configure server hostname
+  hostname:
+    name: "{{ inventory_hostname }}"
+
+- name: Update facts
+  setup:
+
+- name: Update apt cache
+  apt:
+    update_cache: true
+
+- name: install required packages
+  apt:
+    name:
+      - nginx
+      - python3
+      - python3-prometheus-client
+    state: present
+
+- name: Create application directory
+  file:
+    path: /opt/sre-web
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: "0755"
+
+- name: Deploy HTTP application
+  template:
+    src: app.py.j2
+    dest: /opt/sre-web/app.py
+    owner: www-data
+    group: www-data
+    mode: "0755"
+
+- name: Deploy systemd service
+  template:
+    src: sre-web.service.j2
+    dest: /etc/systemd/system/sre-web.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: 
+    - Reload systemd
+    - Restart sre-web service
+
+- name: Deploy nginx configuration
+  template:
+    src: nginx-sre-web.conf.j2
+    dest: /etc/nginx/sites-available/nginx-sre-web
+    owner: root
+    group: root
+    mode: "0644"
+  notify: NGINX restart
+
+- name: Disable default NGINX site
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: NGINX restart
+
+- name: Enable sre-web NGINX site
+  file:
+    src: /etc/nginx/sites-available/nginx-sre-web
+    dest: /etc/nginx/sites-enabled/nginx-sre-web
+    state: link
+  notify: NGINX restart
+
+- name: Enable and start SRE web service
+  systemd:
+    name: sre-web
+    enabled: true
+    state: started
+
+- name: Init NGINX service
+  service:
+    name: nginx
+    state: started
+    enabled: true
+
+- name: Apply pending handlers
+  meta: flush_handlers
+
+- name: Check website availability
+  uri:
+    url: http://localhost
+    method: GET
+    status_code: 200
+    return_content: true
+  register: website_check
+
+- name: Verify website content
+  assert:
+    that:
+      - website_check.status == 200
+      - website_check.content | length > 0
+    fail_msg: "Website health check failed"
+    success_msg: "Website is working correctly"

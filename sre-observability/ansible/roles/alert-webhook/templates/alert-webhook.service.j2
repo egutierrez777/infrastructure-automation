@@ -1,0 +1,15 @@
+[Unit]
+Description=SRE Alertmanager Webhook Receiver
+After=network.target
+
+[Service]
+Type=simple
+User={{ alert_webhook_user }}
+Group={{ alert_webhook_group }}
+WorkingDirectory={{ alert_webhook_install_dir }}
+ExecStart=/usr/bin/python3 {{ alert_webhook_install_dir }}/webhook.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
