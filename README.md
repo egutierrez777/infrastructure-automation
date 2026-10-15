@@ -1,10 +1,10 @@
 # Infrastructure Automation
 
-**Infrastructure as Code · Automation · DevOps · Observability · SRE**
+**Infrastructure as Code · Automation · DevOps · Kubernetes · Observability · SRE**
 
-A collection of practical projects focused on automating infrastructure, deploying services, and building reliable and observable platforms.
+A collection of practical projects focused on automating infrastructure, deploying services, orchestrating containers and building reliable and observable platforms.
 
-The repository brings together practical implementations covering different aspects of modern infrastructure and operations.
+The repository brings together practical implementations covering different aspects of modern infrastructure engineering, automation and operations.
 
 ## Projects
 
@@ -32,15 +32,29 @@ SLIs, SLOs, error budgets, burn-rate alerting, notifications, and end-to-end ale
 
 → [`sre-observability`](./sre-observability)
 
+### 04 · Kubernetes Platform
+
+**Terraform · Ansible · VMware vSphere · Kubernetes · Calico · HAProxy · Helm · Traefik**
+
+Automated provisioning of a six-VM Kubernetes cluster with three control-plane nodes and two worker nodes, including cluster initialization, networking, API load balancing, and HTTP application publishing.
+
+Podinfo is deployed with Helm and exposed through Traefik Ingress and HAProxy, demonstrating end-to-end infrastructure and application automation.
+
+→ [`kubernetes-platform`](./kubernetes-platform)
+
 ## Technology Areas
 
 ### Infrastructure & Automation
 
 `VMware vSphere` · `Terraform` · `Ansible`
 
-### Web Infrastructure
+### Web Infrastructure & Load Balancing
 
 `NGINX` · `HAProxy`
+
+### Container Orchestration
+
+`Kubernetes` · `Calico` · `Helm` · `Traefik` · `Podinfo`
 
 ### Observability & SRE
 
@@ -55,8 +69,20 @@ Automation
         ↓
 Service Deployment
         ↓
+Container Orchestration
+        ↓
 Scalable Infrastructure
         ↓
 Observability
         ↓
 SRE Practices
+```
+
+## Goals
+
+- Automate infrastructure provisioning and configuration.
+- Apply reusable Infrastructure as Code practices.
+- Deploy and operate services on virtualized infrastructure.
+- Build and automate Kubernetes platforms.
+- Implement load balancing and application publishing.
+- Apply observability and Site Reliability Engineering principles.
