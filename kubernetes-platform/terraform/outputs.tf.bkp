@@ -1,0 +1,27 @@
+output "load_balancer" {
+  description = "Kubernetes load balancer"
+  value = {
+    name = module.load_balancer.vm_name
+    ip   = module.load_balancer.vm_ip
+  }
+}
+
+output "control_plane" {
+  description = "Kubernetes control plane nodes"
+  value = [
+    for node in module.control_plane : {
+      name = node.vm_name
+      ip   = node.vm_ip
+    }
+  ]
+}
+
+output "workers" {
+  description = "Kubernetes worker nodes"
+  value = [
+    for node in module.worker : {
+      name = node.vm_name
+      ip   = node.vm_ip
+    }
+  ]
+}

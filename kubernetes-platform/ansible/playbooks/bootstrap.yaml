@@ -1,0 +1,7 @@
+---
+- name: Bootstrap Kubernetes infrastructure
+  hosts: all
+  become: true
+
+  roles:
+    - bootstrap

@@ -1,0 +1,18 @@
+---
+- name: Configure Kubernetes API load balancer
+  ansible.builtin.import_playbook: load_balancer.yaml
+
+- name: Prepare Kubernetes nodes
+  ansible.builtin.import_playbook: prepare_kubernetes.yaml
+
+- name: Initialize first control plane
+  ansible.builtin.import_playbook: initialize_control_plane.yaml
+
+- name: Install Calico
+  ansible.builtin.import_playbook: calico.yaml
+
+- name: Join additional control planes
+  ansible.builtin.import_playbook: join_control_planes.yaml
+
+- name: Join Kubernetes workers
+  ansible.builtin.import_playbook: join_workers.yaml

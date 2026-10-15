@@ -1,0 +1,8 @@
+---
+- name: Configure Kubernetes API load balancer
+  hosts: load_balancer
+  become: true
+  gather_facts: true
+
+  roles:
+    - load_balancer

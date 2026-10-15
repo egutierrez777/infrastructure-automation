@@ -1,0 +1,23 @@
+---
+- name: Prepare temporary credentials for worker joining
+  hosts: k8s-master01
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Prepare worker join credentials
+      ansible.builtin.import_role:
+        name: kubernetes
+        tasks_from: prepare_join
+
+- name: Join Kubernetes workers
+  hosts: workers
+  become: true
+  gather_facts: true
+  serial: 1
+
+  tasks:
+    - name: Join the existing cluster
+      ansible.builtin.import_role:
+        name: kubernetes
+        tasks_from: join

@@ -1,0 +1,8 @@
+---
+- name: Configure Podinfo HTTP ingress
+  hosts: k8s-master01
+  become: true
+  gather_facts: false
+
+  roles:
+    - podinfo_ingress

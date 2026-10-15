@@ -1,0 +1,375 @@
+---
+- name: Validate Calico configuration
+  assert:
+    that:
+      - calico_release_api_url | length > 0
+      - calico_manifest_dir | length > 0
+      - calico_kubeconfig | length > 0
+      - calico_pod_cidr | length > 0
+      - calico_encapsulation in ['VXLAN', 'VXLANCrossSubnet', 'None']
+      - calico_ip_pool_block_size | int > 0
+      - calico_operator_namespace | length > 0
+      - calico_system_namespace | length > 0
+    fail_msg: "Invalid Calico configuration."
+
+- name: Check Kubernetes API readiness
+  command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ calico_kubeconfig }}"
+      - get
+      - --raw=/readyz
+  register: calico_api_ready
+  changed_when: false
+  retries: 5
+  delay: 5
+  until: calico_api_ready.rc == 0
+
+- name: Check Calico version lock file
+  stat:
+    path: "{{ calico_manifest_dir }}/selected-version"
+  register: calico_version_lock
+  when: calico_version_override | length == 0
+
+- name: Read selected Calico version
+  slurp:
+    src: "{{ calico_manifest_dir }}/selected-version"
+  register: calico_saved_version
+  when:
+    - calico_version_override | length == 0
+    - calico_version_lock.stat.exists
+
+- name: Discover latest stable Calico release
+  uri:
+    url: "{{ calico_release_api_url }}"
+    method: GET
+    return_content: true
+    status_code: 200
+  register: calico_release_response
+  when:
+    - calico_version_override | length == 0
+    - not calico_version_lock.stat.exists
+
+- name: Validate discovered Calico release
+  assert:
+    that:
+      - calico_release_response.json.tag_name is match('^v[0-9]+\.[0-9]+\.[0-9]+$')
+      - not (calico_release_response.json.prerelease | bool)
+      - not (calico_release_response.json.draft | bool)
+    fail_msg: >-
+      GitHub did not return a valid stable Calico release.
+  when:
+    - calico_version_override | length == 0
+    - not calico_version_lock.stat.exists
+
+- name: Select Calico version
+  set_fact:
+    calico_selected_version: >-
+      {{
+        calico_version_override
+        if calico_version_override | length > 0
+        else (
+          calico_saved_version.content | b64decode | trim
+          if calico_version_lock.stat.exists
+          else calico_release_response.json.tag_name
+        )
+      }}
+
+- name: Validate selected Calico version format
+  assert:
+    that:
+      - calico_selected_version is match('^v[0-9]+\.[0-9]+\.[0-9]+$')
+    fail_msg: "The selected Calico version is not a stable release tag."
+
+- name: Define Calico manifest paths
+  ansible.builtin.set_fact:
+    calico_selected_manifest_dir: >-
+      {{ calico_manifest_dir }}/{{ calico_selected_version }}
+    calico_selected_manifest_url: >-
+      https://raw.githubusercontent.com/projectcalico/calico/{{ calico_selected_version }}/manifests
+
+- name: Display selected Calico version
+  debug:
+    msg: "Selected Calico release: {{ calico_selected_version }}"
+
+- name: Read control plane PodCIDR
+  command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ calico_kubeconfig }}"
+      - get
+      - node
+      - "{{ inventory_hostname }}"
+      - -o
+      - jsonpath={.spec.podCIDR}
+  register: calico_master_pod_cidr
+  changed_when: false
+
+- name: Validate control plane PodCIDR
+  assert:
+    that:
+      - calico_master_pod_cidr.stdout | length > 0
+    fail_msg: >-
+      Kubernetes has not assigned a PodCIDR to the control plane node.
+
+- name: Create version-specific manifest directory
+  file:
+    path: "{{ calico_selected_manifest_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Download native Calico v3 CRDs
+  get_url:
+    url: "{{ calico_selected_manifest_url }}/v3_projectcalico_org.yaml"
+    dest: "{{ calico_selected_manifest_dir }}/v3_projectcalico_org.yaml"
+    owner: root
+    group: root
+    mode: "0644"
+    validate_certs: true
+
+- name: Download Tigera operator manifest
+  get_url:
+    url: "{{ calico_selected_manifest_url }}/tigera-operator.yaml"
+    dest: "{{ calico_selected_manifest_dir }}/tigera-operator.yaml"
+    owner: root
+    group: root
+    mode: "0644"
+    validate_certs: true
+
+- name: Read downloaded Calico CRD manifest
+  slurp:
+    src: "{{ calico_selected_manifest_dir }}/v3_projectcalico_org.yaml"
+  register: calico_crd_manifest
+
+- name: Read downloaded Tigera operator manifest
+  slurp:
+    src: "{{ calico_selected_manifest_dir }}/tigera-operator.yaml"
+  register: calico_operator_manifest
+
+- name: Validate downloaded manifests are not empty
+  assert:
+    that:
+      - (calico_crd_manifest.content | b64decode | length) > 0
+      - (calico_operator_manifest.content | b64decode | length) > 0
+      - "'CustomResourceDefinition' in (calico_crd_manifest.content | b64decode)"
+      - "'tigera-operator' in (calico_operator_manifest.content | b64decode)"
+    fail_msg: >-
+      One or more downloaded manifests are empty or do not contain
+      the expected resources.
+
+- name: Create Calico manifest base directory
+  file:
+    path: "{{ calico_manifest_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Save selected Calico version
+  copy:
+    content: "{{ calico_selected_version }}\n"
+    dest: "{{ calico_manifest_dir }}/selected-version"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Apply native Calico v3 CRDs
+  command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ calico_kubeconfig }}"
+      - apply
+      - --server-side
+      - --field-manager=ansible-calico
+      - -f
+      - "{{ calico_selected_manifest_dir }}/v3_projectcalico_org.yaml"
+  register: calico_crd_apply
+  changed_when: >-
+    'created' in calico_crd_apply.stdout or
+    'configured' in calico_crd_apply.stdout
+
+- name: Apply Tigera operator
+  command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ calico_kubeconfig }}"
+      - apply
+      - --server-side
+      - --field-manager=ansible-calico
+      - -f
+      - "{{ calico_selected_manifest_dir }}/tigera-operator.yaml"
+  register: calico_operator_apply
+  changed_when: >-
+    'created' in calico_operator_apply.stdout or
+    'configured' in calico_operator_apply.stdout
+
+- name: Wait for Tigera operator rollout
+  command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ calico_kubeconfig }}"
+      - rollout
+      - status
+      - deployment/tigera-operator
+      - -n
+      - "{{ calico_operator_namespace }}"
+      - "--timeout={{ calico_operator_rollout_timeout }}"
+  changed_when: false
+
+- name: Wait for Tigera Installation CRD
+  command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ calico_kubeconfig }}"
+      - wait
+      - --for=condition=Established
+      - --timeout=180s
+      - crd/installations.operator.tigera.io
+  changed_when: false
+
+- name: Wait for Tigera APIServer CRD
+  command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ calico_kubeconfig }}"
+      - wait
+      - --for=condition=Established
+      - --timeout=180s
+      - crd/apiservers.operator.tigera.io
+  changed_when: false
+
+- name: Render Calico custom resources
+  template:
+    src: custom-resources.yaml.j2
+    dest: "{{ calico_selected_manifest_dir }}/custom-resources.yaml"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Validate Calico custom resources with server-side dry run
+  command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ calico_kubeconfig }}"
+      - apply
+      - --dry-run=server
+      - -f
+      - "{{ calico_selected_manifest_dir }}/custom-resources.yaml"
+  changed_when: false
+
+- name: Apply Calico custom resources
+  command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ calico_kubeconfig }}"
+      - apply
+      - --server-side
+      - --field-manager=ansible-calico
+      - -f
+      - "{{ calico_selected_manifest_dir }}/custom-resources.yaml"
+  register: calico_custom_resources_apply
+  changed_when: >-
+    'created' in calico_custom_resources_apply.stdout or
+    'configured' in calico_custom_resources_apply.stdout
+
+- name: Wait for Calico sustem namespace
+  command:
+    argv:
+      - kubectl
+      - --kubeconfig=/etc/kubernetes/admin.conf
+      - get
+      - namespace
+      - calico-system
+  register: calico_namespace_check
+  changed_when: false
+  retries: 120
+  delay: 5
+  until: calico_namespace_check.rc == 0
+
+- name: Wait for Clico node DaemonSet cretion
+  command:
+    argv:
+      - kubectl
+      - --kubeconfig=/etc/kubernetes/admin.conf
+      - get
+      - daemonset
+      - calico-node
+      - -n
+      - calico-system
+  register: calico_daemonset_check
+  changed_when: false
+  retries: 60
+  delay: 5
+  until: calico_daemonset_check.rc == 0
+
+- name: Wait for Calico node DaemonSet rollout
+  command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ calico_kubeconfig }}"
+      - rollout
+      - status
+      - daemonset/calico-node
+      - -n
+      - "{{ calico_system_namespace }}"
+      - "--timeout={{ calico_pods_wait_timeout }}"
+  changed_when: false
+
+- name: Wait for control plane node Ready
+  command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ calico_kubeconfig }}"
+      - wait
+      - --for=condition=Ready
+      - "node/{{ inventory_hostname }}"
+      - "--timeout={{ calico_node_wait_timeout }}"
+  changed_when: false
+
+- name: Wait for CoreDNS rollout
+  command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ calico_kubeconfig }}"
+      - rollout
+      - status
+      - deployment/coredns
+      - -n
+      - kube-system
+      - "--timeout={{ calico_pods_wait_timeout }}"
+  changed_when: false
+
+- name: Read Calico IP pools
+  command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ calico_kubeconfig }}"
+      - get
+      - ippools
+      - -o
+      - yaml
+  register: calico_ip_pools
+  changed_when: false
+
+- name: Validate Calico IP pool CIDR
+  assert:
+    that:
+      - calico_pod_cidr in calico_ip_pools.stdout
+    fail_msg: >-
+      The configured Calico IP pool does not match the desired Pod CIDR.
+
+- name: Read final Kubernetes node status
+  command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ calico_kubeconfig }}"
+      - get
+      - nodes
+  register: calico_final_nodes
+  changed_when: false
+
+- name: Display final Kubernetes node status
+  debug:
+    var: calico_final_nodes.stdout_lines

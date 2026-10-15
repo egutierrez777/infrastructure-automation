@@ -1,0 +1,22 @@
+---
+- name: Install HAProxy
+  apt:
+    name: haproxy
+    state: present
+    update_cache: true
+    
+- name: Configure HAProxy for Kubernetes API
+  template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    owner: root
+    group: root
+    mode: "0644"
+    validate: "haproxy -c -f %s"
+  notify: Restart HAProxy
+
+- name: Ensure HAProxy is enabled and started
+  systemd:
+    name: haproxy
+    enabled: true
+    state: started

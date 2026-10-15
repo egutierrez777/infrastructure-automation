@@ -1,0 +1,12 @@
+---
+- name: Configure Kubernetes sysctl settings
+  copy:
+    dest: /etc/sysctl.d/99-kubernetes.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      {% for key, value in kubernetes_sysctl_settings.items() %}
+      {{ key }} = {{ value }}
+      {% endfor %}
+  notify: Apply Kubernetes sysctl settings

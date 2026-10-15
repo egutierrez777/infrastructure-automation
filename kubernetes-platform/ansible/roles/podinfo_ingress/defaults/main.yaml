@@ -1,0 +1,10 @@
+---
+podinfo_ingress_kubeconfig: "/etc/kubernetes/admin.conf"
+
+podinfo_ingress_name: "podinfo"
+podinfo_ingress_namespace: "podinfo"
+podinfo_ingress_class: "traefik"
+podinfo_ingress_host: "podinfo.k8s.example.com"
+
+podinfo_ingress_service: "podinfo"
+podinfo_ingress_service_port: "9898"

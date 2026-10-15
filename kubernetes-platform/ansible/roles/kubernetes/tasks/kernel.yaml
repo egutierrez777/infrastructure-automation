@@ -1,0 +1,17 @@
+---
+- name: Load Kubernetes kernel modules
+  modprobe:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ kubernetes_kernel_modules }}"
+
+- name: Persist Kubernetes kernel modules
+  copy:
+    dest: /etc/modules-load.d/kubernetes.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      {% for module in kubernetes_kernel_modules %}
+      {{ module }}
+      {% endfor %}

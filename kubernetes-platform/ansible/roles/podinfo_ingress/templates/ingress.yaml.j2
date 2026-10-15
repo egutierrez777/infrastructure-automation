@@ -1,0 +1,18 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ podinfo_ingress_name }}
+  namespace: {{ podinfo_ingress_namespace }}
+spec:
+  ingressClassName: {{ podinfo_ingress_class }}
+  rules:
+    - host: {{ podinfo_ingress_host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ podinfo_ingress_service }}
+                port:
+                  number: {{ podinfo_ingress_service_port }}

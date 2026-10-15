@@ -1,0 +1,96 @@
+---
+- name: Verify this is the first control plane
+  assert:
+    that:
+      - inventory_hostname == groups['masters'][0]
+    fail_msg: "This playbook must target the first control plane only."
+
+- name: Check containerd service
+  command:
+    cmd: systemctl is-active containerd
+  register: containerd_status
+  changed_when: false
+  failed_when: containerd_status.stdout | trim != "active"
+
+- name: Detect installed kubeadm version
+  command:
+    cmd: kubeadm version -o short
+  register: kubeadm_version
+  changed_when: false
+
+- name: Check for existing Kubernetes admin configuration
+  stat:
+    path: /etc/kubernetes/admin.conf
+  register: kubeadm_admin_conf
+
+- name: Check for an existing API Server manifest
+  stat:
+    path: /etc/kubernetes/manifests/kube-apiserver.yaml
+  register: kubeadm_apiserver_manifest
+
+- name: Check for an existing etcd data directory
+  stat:
+    path: /var/lib/etcd/member
+  register: kubeadm_etcd_member
+
+- name: Refuse to initialize a partially initialized node
+  assert:
+    that:
+      - >-
+        kubeadm_admin_conf.stat.exists or
+        (
+          not kubeadm_apiserver_manifest.stat.exists and
+          not kubeadm_etcd_member.stat.exists
+        )
+    fail_msg: >-
+      Existing Kubernetes initialization artifacts were detected without admin.conf. Inspect the node before proceding. No reset will be performed.
+
+- name: Create Kubernetes configuration directory
+  file:
+    path: /etc/kubernetes
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: not kubeadm_admin_conf.stat.exists
+
+- name: Render kubeadm configuration
+  template:
+    src: kubeadm-config.yaml.j2
+    dest: "{{ kubernetes_kubeadm_config_path }}"
+    owner: root
+    group: root
+    mode: "0600"
+  when: not kubeadm_admin_conf.stat.exists
+
+- name: Initialize the first control plane
+  command:
+    argv:
+      - kubeadm
+      - init
+      - --config
+      - "{{ kubernetes_kubeadm_config_path }}"
+      - --upload-certs
+  when: not kubeadm_admin_conf.stat.exists
+  changed_when: true
+
+- name: Wait for Kubernetes admin configuration
+  wait_for:
+    path: /etc/kubernetes/admin.conf
+    state: present
+    timeout: 120
+
+- name: Wait for API Server readiness through HAProxy
+  command:
+    argv:
+      - kubectl
+      - --kubeconfig=/etc/kubernetes/admin.conf
+      - get
+      - --raw=/readyz
+  register: kube_api_ready
+  changed_when: false
+  retries: 12
+  delay: 5
+  until:
+    - kube_api_ready.rc == 0
+    - kube_api_ready.stdout | trim == "ok"

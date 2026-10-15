@@ -1,0 +1,15 @@
+---
+applications_kubeconfig: /etc/kubernetes/admin.conf
+
+applications_helm_release_api_url: "https://api.github.com/repos/helm/helm/releases/latest"
+applications_helm_arch: "amd64"
+applications_helm_install_dir: "/usr/local/bin"
+applications_helm_tmp_dir: "/var/tmp/helm-install"
+
+applications_podinfo_release: "podinfo"
+applications_podinfo_namespace: "podinfo"
+applications_podinfo_chart: "oci://ghcr.io/stefanprodan/charts/podinfo"
+applications_podinfo_chart_version: "6.11.2"
+
+applications_nodeport: "30080"
+applications_rollout_timeout: "180s"

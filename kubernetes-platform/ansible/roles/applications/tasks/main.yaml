@@ -1,0 +1,222 @@
+---
+- name: Verify Kubernetes administrative configuration exists
+  stat:
+    path: "{{ applications_kubeconfig }}"
+  register: applications_kubeconfig_stat
+
+- name: Require existing Kubernetes administrative configuration
+  assert:
+    that:
+      - applications_kubeconfig_stat.stat.exists
+      - applications_kubeconfig_stat.stat.isreg
+    fail_msg: >-
+      The existing Kubernetes kubeconfig was not found.
+      No cluster initialization or reset will be attempted.
+
+- name: Check whether the Helm binary exists
+  stat:
+    path: "{{ applications_helm_install_dir }}/helm"
+  register: applications_helm_binary
+
+- name: Check Helm installation
+  command:
+    argv:
+      - "{{ applications_helm_install_dir }}/helm"
+      - version
+      - --template
+      - "{{ '{{' }} .Version {{ '}}' }}"
+  register: applications_helm_installed
+  changed_when: false
+  failed_when: false
+  when: applications_helm_binary.stat.exists
+
+- name: Refuse to overwrite an existing unusable Helm binary
+  assert:
+    that:
+      - applications_helm_installed.rc == 0
+    fail_msg: >-
+      A Helm binary exists but cannot be executed correctly.
+      Diagnose it manually; this role will not replace it automatically.
+  when: applications_helm_binary.stat.exists
+
+- name: Discover latest Helm stable release
+  uri:
+    url: "{{ applications_helm_release_api_url }}"
+    method: GET
+    return_content: true
+    status_code: 200
+  register: applications_helm_release
+  when: not applications_helm_binary.stat.exists
+
+- name: Validate latest Helm stable release
+  assert:
+    that:
+      - applications_helm_release.json.tag_name is match('^v[0-9]+\\.[0-9]+\\.[0-9]+$')
+      - not (applications_helm_release.json.prerelease | bool)
+      - not (applications_helm_release.json.draft | bool)
+    fail_msg: >-
+      The Helm release API did not return a valid stable release.
+  when: not applications_helm_binary.stat.exists
+
+- name: Set selected Helm version
+  set_fact:
+    applications_helm_selected_version: "{{ applications_helm_release.json.tag_name }}"
+  when: not applications_helm_binary.stat.exists
+
+- name: Create temporary Helm installation directory
+  file:
+    path: "{{ applications_helm_tmp_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: not applications_helm_binary.stat.exists
+
+- name: Define Helm archive path
+  set_fact:
+    applications_helm_archive: >-
+      {{ applications_helm_tmp_dir }}/helm-{{ applications_helm_selected_version }}-linux-{{ applications_helm_arch }}.tar.gz
+  when: not applications_helm_binary.stat.exists
+
+- name: Download official Helm archive checksum
+  uri:
+    url: "{{ 'https://get.helm.sh/helm-' ~ applications_helm_selected_version ~ '-linux-' ~ applications_helm_arch ~ '.tar.gz.sha256sum' }}"
+    method: GEt
+    return_content: true
+    status_code: 200
+  register: applications_helm_checksum_response
+  when: not applications_helm_binary.stat.exists
+
+- name: Validate Helm archive checksum format
+  assert:
+    that:
+      - applications_helm_checksum_response.content | regex_search('^[a-fA-F0-9]{64}') is not none
+    fail_msg: "The official Helm checksum response is invalid."
+  when: not applications_helm_binary.stat.exists
+
+- name: Download and verify Helm archive
+  get_url:
+    url: "{{ 'https://get.helm.sh/helm-' ~ applications_helm_selected_version ~ '-linux-' ~ applications_helm_arch ~ '.tar.gz' }}"
+    dest: "{{ applications_helm_archive }}"
+    checksum: "{{ 'sha256:' ~ (applications_helm_checksum_response.content | regex_search('^[a-fA-F0-9]{64}')) }}"
+    owner: root
+    group: root
+    mode: "0644"
+  when: not applications_helm_binary.stat.exists
+
+- name: Extract Helm archive
+  unarchive:
+    src: "{{ applications_helm_archive }}"
+    dest: "{{ applications_helm_tmp_dir }}"
+    remote_src: true
+    creates: "{{ applications_helm_tmp_dir }}/linux-{{ applications_helm_arch }}/helm"
+  when: not applications_helm_binary.stat.exists
+
+- name: Install Helm binary
+  copy:
+    src: "{{ applications_helm_tmp_dir }}/linux-{{ applications_helm_arch }}/helm"
+    dest: "{{ applications_helm_install_dir }}/helm"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0755"
+  when: not applications_helm_binary.stat.exists
+
+- name: Verify Helm version
+  command:
+    argv:
+      - "{{ applications_helm_install_dir }}/helm"
+      - version
+      - --template
+      - "{{ '{{' }} .Version {{ '}}' }}"
+  register: applications_helm_version_result
+  changed_when: false
+
+- name: Check Kubernetes API access
+  command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ applications_kubeconfig }}"
+      - get
+      - --raw=/readyz
+  register: applications_api_ready
+  changed_when: false
+  retries: 12
+  delay: 5
+  until:
+    - applications_api_ready.rc == 0
+    - applications_api_ready.stdout | trim == "ok"
+
+- name: Inspect Podinfo chart values without deploying
+  command:
+    argv:
+      - "{{ applications_helm_install_dir }}/helm"
+      - show
+      - values
+      - "{{ applications_podinfo_chart }}"
+      - --version
+      - "{{ applications_podinfo_chart_version }}"
+  register: applications_podinfo_chart_values
+  changed_when: false
+
+- name: Deploy Podinfo with Helm
+  command:
+    argv:
+      - "{{ applications_helm_install_dir }}/helm"
+      - --kubeconfig
+      - "{{ applications_kubeconfig }}"
+      - upgrade
+      - --install
+      - "{{ applications_podinfo_release }}"
+      - "{{ applications_podinfo_chart }}"
+      - --version
+      - "{{ applications_podinfo_chart_version }}"
+      - --namespace
+      - "{{ applications_podinfo_namespace }}"
+      - --create-namespace
+      - --set
+      - service.type=NodePort
+      - --set
+      - "service.nodePort={{ applications_nodeport }}"
+      - --set
+      - replicaCount=2
+      - --wait
+      - "--timeout={{ applications_rollout_timeout }}"
+  register: applications_podinfo_deploy
+  changed_when: >-
+    'has been upgraded' in applications_podinfo_deploy.stdout or
+    'has been installed' in applications_podinfo_deploy.stdout
+
+- name: Verify Podinfo deployment rollout
+  command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ applications_kubeconfig }}"
+      - rollout
+      - status
+      - deployment
+      - -n
+      - "{{ applications_podinfo_namespace }}"
+      - "--timeout={{ applications_rollout_timeout }}"
+  changed_when: false
+
+- name: Read Podinfo service
+  command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ applications_kubeconfig }}"
+      - get
+      - service
+      - "{{ applications_podinfo_release }}"
+      - -n
+      - "{{ applications_podinfo_namespace }}"
+      - -o 
+      - wide
+  register: applications_podinfo_service
+  changed_when: false
+
+- name: Display Podinfo deployment status
+  debug:
+    msg:
+      - "Helm: {{ applications_helm_version_result.stdout }}"
+      - "{{ applications_podinfo_service.stdout }}"

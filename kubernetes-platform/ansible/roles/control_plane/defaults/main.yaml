@@ -1,0 +1,17 @@
+---
+kubernetes_api_port: 6443
+
+kubernetes_pod_subnet: "10.244.0.0/16"
+kubernetes_service_subnet: "10.96.0.0/12"
+
+kubernetes_cri_socket: "unix:///run/containerd/containerd.sock"
+
+kubernetes_control_plane_endpoint: >-
+  {{ hostvars[groups['load_balancer'][0]]['ansible_host'] }}:{{ kubernetes_api_port }}
+
+kubernetes_kubeadm_config_path: "/etc/kubernetes/kubeadm-config-yaml"
+
+control_plane_join_token_ttl: "30m"
+control_plane_join_timeout: "10m"
+control_plane_join_kubeconfig: "/etc/kubernetes/admin.conf"
+control_plane_join_cri_socket: "unix:///run/containerd/containerd.sock"

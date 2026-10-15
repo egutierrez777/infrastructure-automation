@@ -1,0 +1,45 @@
+---
+- name: Query available kubeadm versions
+  shell:
+    cmd: "apt-cache madison kubeadm"
+  register: kubeadm_versions
+  changed_when: false
+
+- name: Determine Kubernetes package version
+  set_fact:
+    kubernetes_package_version: >-
+      {{
+        kubeadm_versions.stdout_lines
+        | map('regex_search', '([0-9]+\.[0-9]+\.[0-9]+-[0-9.]+)')
+        | select('string')
+        | select('search', '^' ~ (hostvars['localhost'].kubernetes_stable_version | regex_replace('^v', '')))
+        | list
+        | first
+      }}
+
+- name: Validate Kubernetes package version
+  assert:
+    that:
+      - kubernetes_package_version is defined
+      - kubernetes_package_version | length > 0
+    fail_msg: >-
+      Could not determine the APT package version corresponding to Kubernetes {{ hostvars['localhost'].kubernetes_stable_version }}.
+
+- name: Display Kubernetes package version
+  debug:
+    msg: "Installing Kubernetes packages version {{ kubernetes_package_version }}"
+
+- name: Install Kubernetes packages
+  apt:
+    name:
+      - "kubelet={{ kubernetes_package_version }}"
+      - "kubeadm={{ kubernetes_package_version }}"
+      - "kubectl={{ kubernetes_package_version }}"
+    state: present
+    allow_downgrade: true
+
+- name: Hold Kubernetes packages
+  dpkg_selections:
+    name: "{{ item }}"
+    selection: hold
+  loop: "{{ kubernetes_packages }}"

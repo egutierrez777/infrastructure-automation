@@ -1,0 +1,8 @@
+---
+- name: Install Traefik Ingress Controller
+  hosts: k8s-master01
+  become: true
+  gather_facts: false
+
+  roles:
+    - traefik

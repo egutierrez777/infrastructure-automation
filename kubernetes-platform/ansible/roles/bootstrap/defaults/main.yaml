@@ -1,0 +1,2 @@
+network_gateway: "172.22.7.1"
+dns_server: "8.8.8.8"

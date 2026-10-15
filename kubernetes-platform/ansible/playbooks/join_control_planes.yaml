@@ -1,0 +1,23 @@
+---
+- name: Prepare temporary credentials for control plane joining
+  hosts: k8s-master01
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Prepare join credentials
+      ansible.builtin.import_role:
+        name: control_plane
+        tasks_from: prepare_join
+
+- name: Join additional Kubernetes control planes
+  hosts: k8s-master02:k8s-master03
+  become: true
+  gather_facts: true
+  serial: 1
+
+  tasks:
+    - name: Join the existing cluster
+      ansible.builtin.import_role:
+        name: control_plane
+        tasks_from: join

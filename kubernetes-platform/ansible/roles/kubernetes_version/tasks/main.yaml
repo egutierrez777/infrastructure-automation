@@ -1,0 +1,25 @@
+---
+- name: Get latest Kubernetes stable release
+  uri:
+    url: "{{ kubernetes_stable_release_url }}"
+    method: GET
+    return_content: true
+    status_code: 200
+  register: kubernetes_stable_release
+
+- name: Set Kubernetes stable version
+  set_fact:
+    kubernetes_stable_version: "{{ kubernetes_stable_release.content | trim }}"
+
+- name: Set Kubernetes minor version
+  set_fact:
+    kubernetes_minor_version: >-
+      {{
+        kubernetes_stable_version | regex_replace('^v([0-9]+\.[0-9]+)\.[0-9]+$', '\1')
+      }}
+
+- name: Display Kubernetes versions
+  debug:
+    msg:
+      - "Kubernetes stable version: {{ kubernetes_stable_version }}"
+      - "Kubernetes minor version: {{ kubernetes_minor_version }}"

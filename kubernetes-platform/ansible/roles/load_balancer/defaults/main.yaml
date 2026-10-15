@@ -1,0 +1,11 @@
+---
+haproxy_api_port: 6443
+
+haproxy_api_connect_timeout: "5s"
+haproxy_api_client_timeout: "1m"
+haproxy_api_server_timeout: "1m"
+
+haproxy_api_max_connections: 4096
+
+haproxy_http_port: 80
+haproxy_traefik_nodeport: 30081

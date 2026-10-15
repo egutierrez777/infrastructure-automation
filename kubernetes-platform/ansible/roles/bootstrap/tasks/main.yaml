@@ -1,0 +1,16 @@
+---
+- name: Configure server hostname
+  hostname:
+    name: "{{ inventory_hostname }}"
+
+- name: Update facts
+  setup:
+
+- name: Deploy static network configuration
+  template:
+    src: 00-kubernetes.yaml.j2
+    dest: /etc/netplan/00-kubernetes.yaml
+    owner: root
+    group: root
+    mode: "0600"
+  notify: Reboot after network configuration changes

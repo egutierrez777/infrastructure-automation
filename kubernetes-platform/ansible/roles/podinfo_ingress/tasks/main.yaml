@@ -1,0 +1,70 @@
+---
+- name: Verify Kubernetes administrative configuration exists
+  stat:
+    path: "{{ podinfo_ingress_kubeconfig }}"
+  register: podinfo_ingress_kubeconfig_stat
+
+- name: Require existing Kubernetes administrative configuration
+  assert:
+    that:
+      - podinfo_ingress_kubeconfig_stat.stat.exists
+      - podinfo_ingress_kubeconfig_stat.stat.isreg
+    fail_msg: >-
+      The existing Kubernetes kubeconfig was not found.
+      No cluster initialization or reset will be attempted.
+
+- name: Check Kubernetes API access
+  command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ podinfo_ingress_kubeconfig }}"
+      - get
+      - --raw=/readyz
+  register: podinfo_ingress_api_ready
+  changed_when: false
+  retries: 12
+  delay: 5
+  until:
+    - podinfo_ingress_api_ready.rc == 0
+    - podinfo_ingress_api_ready.stdout | trim == "ok"
+
+- name: Render Podinfo Ingress manifest
+  template:
+    src: ingress.yaml.j2
+    dest: /etc/kubernetes/{{ podinfo_ingress_name }}-ingress.yaml
+    owner: root
+    group: root
+    mode: "0644"
+  register: podinfo_ingress_manifest
+
+- name: Apply Podinfo Ingress
+  command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ podinfo_ingress_kubeconfig }}"
+      - apply
+      - -f
+      - /etc/kubernetes/{{ podinfo_ingress_name }}-ingress.yaml
+  register: podinfo_ingress_apply
+  changed_when: >-
+    'created' in podinfo_ingress_apply.stdout or
+    'configured' in podinfo_ingress_apply.stdout
+
+- name: Read Podinfo Ingress
+  command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ podinfo_ingress_kubeconfig }}"
+      - get
+      - ingress
+      - "{{ podinfo_ingress_name }}"
+      - -n
+      - "{{ podinfo_ingress_namespace }}"
+      - -o
+      - wide
+  register: podinfo_ingress_status
+  changed_when: false
+
+- name: Display Podinfo Ingress status
+  debug:
+    var: podinfo_ingress_status.stdout

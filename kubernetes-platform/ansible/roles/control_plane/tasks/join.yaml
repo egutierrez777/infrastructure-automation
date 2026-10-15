@@ -1,0 +1,88 @@
+---
+- name: Check existing admin configuration
+  ansible.builtin.stat:
+    path: /etc/kubernetes/admin.conf
+  register: control_plane_join_admin_conf
+
+- name: Check existing kubelet configuration
+  ansible.builtin.stat:
+    path: /etc/kubernetes/kubelet.conf
+  register: control_plane_join_kubelet_conf
+
+- name: Check existing API Server manifest
+  ansible.builtin.stat:
+    path: /etc/kubernetes/manifests/kube-apiserver.yaml
+  register: control_plane_join_apiserver_manifest
+
+- name: Check existing etcd member data
+  ansible.builtin.stat:
+    path: /var/lib/etcd/member
+  register: control_plane_join_etcd_member
+
+- name: Validate current initialization state
+  ansible.builtin.assert:
+    that:
+      - >-
+        (
+          not control_plane_join_admin_conf.stat.exists and
+          not control_plane_join_kubelet_conf.stat.exists and
+          not control_plane_join_apiserver_manifest.stat.exists and
+          not control_plane_join_etcd_member.stat.exists
+        ) or
+        (
+          control_plane_join_admin_conf.stat.exists and
+          control_plane_join_kubelet_conf.stat.exists and
+          control_plane_join_apiserver_manifest.stat.exists and
+          control_plane_join_etcd_member.stat.exists
+        )
+    fail_msg: >-
+      This node has partial Kubernetes initialization artifacts.
+      Manual diagnosis is required; no reset or cleanup will be performed.
+
+- name: Join the existing Kubernetes cluster as a control plane
+  ansible.builtin.command:
+    argv:
+      - kubeadm
+      - join
+      - "{{ kubernetes_control_plane_endpoint }}"
+      - --token
+      - "{{ hostvars['k8s-master01']['control_plane_join_token'] }}"
+      - --discovery-token-ca-cert-hash
+      - "{{ hostvars['k8s-master01']['control_plane_join_ca_hash'] }}"
+      - --control-plane
+      - --certificate-key
+      - "{{ hostvars['k8s-master01']['control_plane_join_certificate_key'] }}"
+      - --apiserver-advertise-address
+      - "{{ ansible_host }}"
+      - --cri-socket
+      - "{{ control_plane_join_cri_socket }}"
+  when: >-
+    not control_plane_join_kubelet_conf.stat.exists
+  no_log: true
+
+- name: Wait for this node to become Ready
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - --kubeconfig=/etc/kubernetes/admin.conf
+      - wait
+      - "--for=condition=Ready"
+      - "node/{{ inventory_hostname }}"
+      - "--timeout={{ control_plane_join_timeout }}"
+  delegate_to: k8s-master01
+  become: true
+  changed_when: false
+
+- name: Verify this node is registered
+  ansible.builtin.command:
+    argv:
+      - kubectl
+      - --kubeconfig=/etc/kubernetes/admin.conf
+      - get
+      - node
+      - "{{ inventory_hostname }}"
+      - -o
+      - wide
+  delegate_to: k8s-master01
+  become: true
+  changed_when: false

@@ -1,0 +1,8 @@
+---
+- name: Initialize the firt kubernetes control plane
+  hosts: k8s-master01
+  become: true
+  gather_facts: true
+
+  roles:
+    - control_plane

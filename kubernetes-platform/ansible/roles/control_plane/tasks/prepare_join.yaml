@@ -1,0 +1,93 @@
+---
+- name: Check existing API Server readiness
+  command:
+    argv:
+      - kubectl
+      - --kubeconfig=/etc/kubernetes/admin.conf
+      - get
+      - --raw=/readyz
+  register: control_plane_join_api
+  changed_when: false
+  failed_when:
+    - control_plane_join_api.rc != 0 or
+      control_plane_join_api.stdout | trim != "ok"
+
+- name: Verify the existing control plane is Ready
+  command:
+    argv:
+      - kubectl
+      - --kubeconfig=/etc/kubernetes/admin.conf
+      - get
+      - node
+      - "{{ inventory_hostname }}"
+      - -o
+      - "jsonpath={.status.conditions[?(@.type=='Ready')].status}"
+  register: control_plane_join_node_ready
+  changed_when: false
+  failed_when: >-
+    control_plane_join_node_ready.rc != 0 or
+    control_plane_join_node_ready.stdout | trim != "True"
+
+- name: Upload existing control plane certificates
+  command:
+    argv:
+      - kubeadm
+      - init
+      - phase
+      - upload-certs
+      - --upload-certs
+  register: control_plane_join_certificates
+  changed_when: true
+  no_log: true
+
+- name: Extract temporary certificate key
+  set_fact:
+    control_plane_join_certificate_key: >-
+      {{ control_plane_join_certificates.stdout
+         | regex_search('[0-9a-f]{64}') | default('', true) }}
+  no_log: true
+
+- name: Create temporary bootstrap token
+  command:
+    argv:
+      - kubeadm
+      - token
+      - create
+      - --ttl
+      - "{{ control_plane_join_token_ttl }}"
+  register: control_plane_join_token_result
+  changed_when: true
+  no_log: true
+
+- name: Store temporary bootstrap token
+  set_fact:
+    control_plane_join_token: >-
+      {{ control_plane_join_token_result.stdout | trim }}
+  no_log: true
+
+- name: Calculate Kubernetes CA discovery hash
+  shell:
+    cmd: >-
+      openssl x509 -pubkey
+      -in /etc/kubernetes/pki/ca.crt
+      | openssl pkey -pubin -outform DER
+      | openssl dgst -sha256 -hex
+      | awk '{print $NF}'
+  register: control_plane_join_ca_hash_result
+  changed_when: false
+
+- name: Store Kubernetes CA discovery hash
+  set_fact:
+    control_plane_join_ca_hash: >-
+      sha256:{{ control_plane_join_ca_hash_result.stdout | trim }}
+
+- name: Validate temporary join credentials
+  assert:
+    that:
+      - control_plane_join_certificate_key | length == 64
+      - control_plane_join_token is match('^[a-z0-9]{6}\.[a-z0-9]{16}$')
+      - control_plane_join_ca_hash is match('^sha256:[a-f0-9]{64}$')
+    fail_msg: >-
+      Join credentials could not be validated.
+      Inspect the preparation tasks without displaying secret values.
+  no_log: true

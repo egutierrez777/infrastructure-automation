@@ -1,0 +1,73 @@
+---
+- name: Check existing Kubernetes API readiness
+  command:
+    argv:
+      - kubectl
+      - --kubeconfig=/etc/kubernetes/admin.conf
+      - get
+      - --raw=/readyz
+  register: kubernetes_worker_join_api
+  changed_when: false
+  failed_when: >-
+    kubernetes_worker_join_api.rc != 0 or
+    kubernetes_worker_join_api.stdout | trim != "ok"
+
+- name: Verify the first control plane is Ready
+  command:
+    argv:
+      - kubectl
+      - --kubeconfig=/etc/kubernetes/admin.conf
+      - get
+      - node
+      - "{{ inventory_hostname }}"
+      - -o
+      - "jsonpath={.status.conditions[?(@.type=='Ready')].status}"
+  register: kubernetes_worker_join_master_ready
+  changed_when: false
+  failed_when: >-
+    kubernetes_worker_join_master_ready.rc != 0 or
+    kubernetes_worker_join_master_ready.stdout | trim != "True"
+
+- name: Create temporary worker bootstrap token
+  command:
+    argv:
+      - kubeadm
+      - token
+      - create
+      - --ttl
+      - "{{ kubernetes_worker_join_token_ttl }}"
+  register: kubernetes_worker_join_token_result
+  changed_when: true
+  no_log: true
+
+- name: Store temporary worker bootstrap token
+  set_fact:
+    kubernetes_worker_join_token: >-
+      {{ kubernetes_worker_join_token_result.stdout | trim }}
+  no_log: true
+
+- name: Calculate Kubernetes CA discovery hash
+  shell:
+    cmd: >-
+      openssl x509 -pubkey
+      -in /etc/kubernetes/pki/ca.crt
+      | openssl pkey -pubin -outform DER
+      | openssl dgst -sha256 -hex
+      | awk '{print $NF}'
+  register: kubernetes_worker_join_ca_hash_result
+  changed_when: false
+
+- name: Store Kubernetes CA discovery hash
+  set_fact:
+    kubernetes_worker_join_ca_hash: >-
+      sha256:{{ kubernetes_worker_join_ca_hash_result.stdout | trim }}
+
+- name: Validate temporary worker join credentials
+  assert:
+    that:
+      - kubernetes_worker_join_token is match('^[a-z0-9]{6}\.[a-z0-9]{16}$')
+      - kubernetes_worker_join_ca_hash is match('^sha256:[a-f0-9]{64}$')
+    fail_msg: >-
+      Worker join credentials could not be validated.
+      Inspect the preparation tasks without displaying secret values.
+  no_log: true

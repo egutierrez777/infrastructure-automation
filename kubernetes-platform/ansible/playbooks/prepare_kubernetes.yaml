@@ -1,0 +1,17 @@
+---
+- name: Detect Kubernetes version
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    ansible_become: false
+
+  roles:
+    - kubernetes_version
+
+- name: Prepare Kubernetes nodes
+  hosts: masters:workers
+  become: true
+
+  roles:
+    - kubernetes

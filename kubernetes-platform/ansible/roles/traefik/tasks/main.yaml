@@ -1,0 +1,92 @@
+---
+- name: Verify Kubernetes administrative configuration exists
+  stat:
+    path: "{{ traefik_kubeconfig }}"
+  register: traefik_kubeconfig_stat
+
+- name: Require existing Kubernetes administrative configuration
+  assert:
+    that:
+      - traefik_kubeconfig_stat.stat.exists
+      - traefik_kubeconfig_stat.stat.isreg
+    fail_msg: >-
+      The existing Kubernetes kubeconfig was not found.
+      Traefik installation will not attempt to initialize or reset the cluster.
+
+- name: Check Kubernetes API access
+  command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ traefik_kubeconfig }}"
+      - get
+      - --raw=/readyz
+  register: traefik_api_ready
+  changed_when: false
+  retries: 12
+  delay: 5
+  until:
+    - traefik_api_ready.rc == 0
+    - traefik_api_ready.stdout | trim == "ok"
+
+- name: Install Traefik with Helm
+  command:
+    argv:
+      - /usr/local/bin/helm
+      - --kubeconfig
+      - "{{ traefik_kubeconfig }}"
+      - upgrade
+      - --install
+      - "{{ traefik_release }}"
+      - "{{ traefik_chart }}"
+      - --version
+      - "{{ traefik_chart_version }}"
+      - --namespace
+      - "{{ traefik_namespace }}"
+      - --create-namespace
+      - --set
+      - service.spec.type=NodePort
+      - --set
+      - "ports.web.nodePort={{ traefik_http_nodeport }}"
+      - --set
+      - ports.websecure.expose.default=false
+      - --wait
+      - "--timeout={{ traefik_rollout_timeout }}"
+  register: traefik_helm_deploy
+  changed_when: >-
+    'has been upgraded' in traefik_helm_deploy.stdout or
+    'has been installed' in traefik_helm_deploy.stdout
+
+- name: Verify Traefik deployment rollout
+  command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ traefik_kubeconfig }}"
+      - rollout
+      - status
+      - deployment
+      - -n
+      - "{{ traefik_namespace }}"
+      - "{{ traefik_release }}"
+      - "--timeout={{ traefik_rollout_timeout }}"
+  changed_when: false
+
+- name: Read Traefik service
+  command:
+    argv:
+      - kubectl
+      - "--kubeconfig={{ traefik_kubeconfig }}"
+      - get
+      - service
+      - "{{ traefik_release }}"
+      - -n
+      - "{{ traefik_namespace }}"
+      - -o
+      - wide
+  register: traefik_service
+  changed_when: false
+
+- name: Display Traefik deployment status
+  debug:
+    msg:
+      - "{{ traefik_helm_deploy.stdout }}"
+      - "{{ traefik_service.stdout }}"

@@ -1,0 +1,7 @@
+---
+- name: Reboot after network configuration changes
+  shell:
+    sleep 2 && systemctl reboot
+  async: 1
+  poll: 0
+  become: true

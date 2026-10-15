@@ -1,0 +1,10 @@
+---
+- name: Install Helm and inspect the Podinfo chart
+  hosts: k8s-master01
+  become: true
+  gather_facts: true
+
+  roles:
+    - applications
+    - traefik
+    - podinfo_ingress

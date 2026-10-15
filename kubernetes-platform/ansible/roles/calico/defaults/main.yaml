@@ -1,0 +1,18 @@
+---
+calico_version_override: ""
+
+calico_release_api_url: "https://api.github.com/repos/projectcalico/calico/releases/latest"
+
+calico_manifest_dir: "/opt/calico"
+calico_kubeconfig: "/etc/kubernetes/admin.conf"
+
+calico_pod_cidr: "10.244.0.0/16"
+calico_encapsulation: "VXLAN"
+calico_ip_pool_block_size: 26
+
+calico_operator_namespace: "tigera-operator"
+calico_system_namespace: "calico-system"
+
+calico_operator_rollout_timeout: "300s"
+calico_pods_wait_timeout: "600s"
+calico_node_wait_timeout: "300s"

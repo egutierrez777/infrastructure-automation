@@ -1,0 +1,9 @@
+---
+- name: Apply Kubernetes sysctl settings
+  command:
+    cmd: sysctl --system
+  
+- name: Restart containerd
+  systemd:
+    name: containerd
+    state: restarted

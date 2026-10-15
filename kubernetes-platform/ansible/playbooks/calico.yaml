@@ -1,0 +1,8 @@
+---
+- name: Install Calico on the existing Kubernetes control plane
+  hosts: k8s-master01
+  become: true
+  gather_facts: false
+
+  roles:
+    - role: calico

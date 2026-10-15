@@ -1,0 +1,99 @@
+---
+- name: Check existing kubelet configuration
+  stat:
+    path: /etc/kubernetes/kubelet.conf
+  register: kubernetes_worker_kubelet_conf
+
+- name: Check existing bootstrap kubelet configuration
+  stat:
+    path: /etc/kubernetes/bootstrap-kubelet.conf
+  register: kubernetes_worker_bootstrap_conf
+
+- name: Check existing API Server manifest
+  stat:
+    path: /etc/kubernetes/manifests/kube-apiserver.yaml
+  register: kubernetes_worker_apiserver_manifest
+
+- name: Check existing etcd member data
+  stat:
+    path: /var/lib/etcd/member
+  register: kubernetes_worker_etcd_member
+
+- name: Check existing Kubernetes CA certificate
+  stat:
+    path: /etc/kubernetes/pki/ca.crt
+  register: kubernetes_worker_ca_certificate
+
+- name: Validate worker initialization state
+  assert:
+    that:
+      - not kubernetes_worker_apiserver_manifest.stat.exists
+      - not kubernetes_worker_etcd_member.stat.exists
+      - >-
+        kubernetes_worker_kubelet_conf.stat.exists or
+        (
+          not kubernetes_worker_bootstrap_conf.stat.exists and
+          not kubernetes_worker_ca_certificate.stat.exists
+        )
+    fail_msg: >-
+      This worker has control-plane artifacts or a partial Kubernetes join.
+      Manual diagnosis is required. No reset or cleanup will be performed.
+
+- name: Verify an already joined worker is registered
+  command:
+    argv:
+      - kubectl
+      - --kubeconfig=/etc/kubernetes/admin.conf
+      - get
+      - node
+      - "{{ inventory_hostname }}"
+      - -o
+      - name
+  delegate_to: k8s-master01
+  become: true
+  register: kubernetes_worker_existing_node
+  changed_when: false
+  when: kubernetes_worker_kubelet_conf.stat.exists
+
+- name: Join the existing Kubernetes cluster as a worker
+  command:
+    argv:
+      - kubeadm
+      - join
+      - "{{ kubernetes_worker_join_endpoint }}"
+      - --token
+      - "{{ hostvars['k8s-master01']['kubernetes_worker_join_token'] }}"
+      - --discovery-token-ca-cert-hash
+      - "{{ hostvars['k8s-master01']['kubernetes_worker_join_ca_hash'] }}"
+      - --cri-socket
+      - "{{ kubernetes_worker_join_cri_socket }}"
+  when: not kubernetes_worker_kubelet_conf.stat.exists
+  changed_when: true
+  no_log: true
+
+- name: Wait for this worker to become Ready
+  command:
+    argv:
+      - kubectl
+      - --kubeconfig=/etc/kubernetes/admin.conf
+      - wait
+      - "--for=condition=Ready"
+      - "node/{{ inventory_hostname }}"
+      - "--timeout={{ kubernetes_worker_join_timeout }}"
+  delegate_to: k8s-master01
+  become: true
+  changed_when: false
+
+- name: Verify the registered worker
+  command:
+    argv:
+      - kubectl
+      - --kubeconfig=/etc/kubernetes/admin.conf
+      - get
+      - node
+      - "{{ inventory_hostname }}"
+      - -o
+      - wide
+  delegate_to: k8s-master01
+  become: true
+  changed_when: false

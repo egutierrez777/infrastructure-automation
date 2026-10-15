@@ -1,0 +1,41 @@
+---
+- name: Install containerd
+  apt:
+    name: "{{ containerd_package }}"
+    state: present
+
+- name: Ensure containerd configuration directory exists
+  file:
+    path: /etc/containerd
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Generate containerd default configuration
+  command:
+    cmd: containerd config default
+  register: containerd_default_config
+  changed_when: false
+
+- name: Configure containerd
+  copy:
+    dest: "{{ containerd_config_path }}"
+    content: "{{ containerd_default_config.stdout }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart containerd
+
+- name: Configure systemd cgroup driver
+  replace:
+    path: "{{ containerd_config_path }}"
+    regexp: 'SystemdCgroup = false'
+    replace: 'SystemdCgroup = true'
+  notify: Restart containerd
+
+- name: Ensure containerd is enabled and started
+  systemd:
+    name: containerd
+    enabled: true
+    state: started

@@ -1,0 +1,10 @@
+---
+traefik_kubeconfig: /etc/kubernetes/admin.conf
+
+traefik_release: traefik
+traefik_namespace: traefik
+traefik_chart: oci://ghcr.io/traefik/helm/traefik
+traefik_chart_version: "41.7.1"
+
+traefik_http_nodeport: 30081
+traefik_rollout_timeout: "180s"

@@ -1,0 +1,41 @@
+global
+    log /dev/log local0
+    maxconn {{ haproxy_api_max_connections }}
+    user haproxy
+    group haproxy
+    daemon
+
+defaults
+    log global
+    mode tcp
+    option tcplog
+    option dontlognull
+
+    timeout connect {{ haproxy_api_connect_timeout }}
+    timeout client {{ haproxy_api_client_timeout }}
+    timeout server {{ haproxy_api_server_timeout }}
+
+frontend kubernetes_api
+    bind {{ hostvars[inventory_hostname]['ansible_host'] }}:{{ haproxy_api_port }}
+    default_backend kubernetes_control_planes
+
+backend kubernetes_control_planes
+    balance roundrobin
+
+{% for master in groups['masters'] %}
+    server {{ master }} {{ hostvars[master]['ansible_host'] }}:{{ haproxy_api_port }} check inter 2s fall 3 rise 2
+{% endfor %}
+
+frontend podinfo_http
+    mode http
+    option httplog
+    bind {{ hostvars[inventory_hostname]['ansible_host'] }}:{{ haproxy_http_port }}
+    default_backend traefik_workers
+
+backend traefik_workers
+    mode http
+    balance roundrobin
+
+{% for worker in groups['workers'] %}
+    server {{ worker }} {{ hostvars[worker]['ansible_host'] }}:{{ haproxy_traefik_nodeport }} check inter 2s fall 3 rise 2
+{% endfor %}

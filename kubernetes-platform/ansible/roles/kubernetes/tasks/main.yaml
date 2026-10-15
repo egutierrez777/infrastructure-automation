@@ -1,0 +1,18 @@
+---
+- name: Run prerequisites
+  import_tasks: prerequisites.yaml
+
+- name: Configure kernel modules
+  import_tasks: kernel.yaml
+
+- name: Configure sysctl
+  import_tasks: sysctl.yaml
+
+- name: Disable swap
+  import_tasks: swap.yaml
+
+- name: Configure containerd
+  import_tasks: containerd.yaml
+
+- name: Install Kubernetes packages
+  import_tasks: kubernetes_packages.yaml
